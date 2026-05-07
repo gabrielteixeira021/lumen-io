@@ -1,8 +1,10 @@
 import os
+import shutil
 import subprocess
 import sys
 
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -171,7 +173,7 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Convertendo {current}/{total}: {file_name}")
 
     def on_conversion_finished(self, result):
-        self.last_output_dir = result["output_dir"]
+        self.last_output_dir = os.path.abspath(result["output_dir"])
         self.status_label.setText(
             f"Concluido: {result['converted']} convertido(s), {result['failed']} falha(s)"
         )
@@ -209,18 +211,102 @@ class MainWindow(QMainWindow):
 
     def open_output_dir(self):
         output_dir = self.last_output_dir or self.output_edit.text().strip()
+        output_dir = os.path.abspath(output_dir) if output_dir else ""
+
         if not output_dir or not os.path.exists(output_dir):
             QMessageBox.warning(self, "Aviso", "A pasta de saida nao existe.")
             return
 
+        if not os.path.isdir(output_dir):
+            QMessageBox.warning(self, "Aviso", "O caminho de saida nao e uma pasta.")
+            return
+
+        errors = []
+
         if sys.platform.startswith("linux"):
-            subprocess.Popen(["xdg-open", output_dir])
+            desktop = (os.environ.get("XDG_CURRENT_DESKTOP") or "").upper()
+            commands = []
+
+            if "KDE" in desktop:
+                commands.extend(
+                    [
+                        ["dolphin", output_dir],
+                        ["kioclient5", "exec", output_dir],
+                        ["kioclient", "exec", output_dir],
+                    ]
+                )
+
+            commands.extend(
+                [
+                    ["xdg-open", output_dir],
+                    ["gio", "open", output_dir],
+                ]
+            )
+
+            launch_env = os.environ.copy()
+
+            # PyInstaller bundles often inject library/plugin paths that break
+            # external desktop apps like Dolphin/KIO when launched as children.
+            original_ld_library_path = launch_env.get("LD_LIBRARY_PATH_ORIG")
+            if original_ld_library_path is not None:
+                launch_env["LD_LIBRARY_PATH"] = original_ld_library_path
+            else:
+                launch_env.pop("LD_LIBRARY_PATH", None)
+
+            for variable_name in (
+                "PYTHONHOME",
+                "PYTHONPATH",
+                "PYTHONEXECUTABLE",
+                "QT_PLUGIN_PATH",
+                "QML2_IMPORT_PATH",
+            ):
+                launch_env.pop(variable_name, None)
+
+            for command in commands:
+                executable = shutil.which(command[0])
+                if executable is None:
+                    errors.append(f"Comando nao encontrado: {command[0]}")
+                    continue
+
+                try:
+                    subprocess.Popen(
+                        [executable, *command[1:]],
+                        env=launch_env,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        start_new_session=True,
+                    )
+                    return
+                except OSError as exc:
+                    errors.append(f"{' '.join(command)}: {exc}")
         elif sys.platform == "darwin":
-            subprocess.Popen(["open", output_dir])
+            try:
+                subprocess.Popen(
+                    ["open", output_dir],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                return
+            except OSError as exc:
+                errors.append(f"open: {exc}")
         elif sys.platform.startswith("win"):
-            os.startfile(output_dir)
+            try:
+                os.startfile(output_dir)
+                return
+            except OSError as exc:
+                errors.append(str(exc))
         else:
-            QMessageBox.information(self, "Pasta de saida", output_dir)
+            if QDesktopServices.openUrl(QUrl.fromLocalFile(output_dir)):
+                return
+            errors.append("QDesktopServices.openUrl falhou")
+
+        error_details = "\n".join(errors) if errors else "sem detalhes"
+        QMessageBox.critical(
+            self,
+            "Erro",
+            f"Nao foi possivel abrir a pasta de saida:\n{output_dir}\n\n{error_details}",
+        )
 
 
 def main():
