@@ -59,6 +59,7 @@ venv.bak/
 lumen_output/
 test_sample.zip
 sample_data/
+learning/
 
 # macOS
 .DS_Store

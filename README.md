@@ -1,6 +1,6 @@
-# Lumen CLI Tool
+# Lumen Desktop Application
 
-A robust, production-ready CLI tool that converts TIFF images (including 8-bit and 16-bit) into lossless PNG format while preserving pixel integrity for downstream AI classification tasks.
+Aplicacao desktop e CLI para converter imagens TIFF dentro de um arquivo `.zip` para PNG sem perdas, preservando a estrutura de diretorios para uso posterior em pipelines de classificacao.
 
 ## Features
 
@@ -12,57 +12,182 @@ A robust, production-ready CLI tool that converts TIFF images (including 8-bit a
   - Detects bit depth (8-bit or 16-bit) and preserves it in PNG output
   - Uses Pillow (PIL) with correct mode handling for lossless conversion
   - Preserves essential metadata when possible
-- **CLI UX**: 
-  - Clear logs with levels: `[INFO]`, `[SUCCESS]`, `[ERROR]`
-  - Accepts input file as CLI argument
-- **Cross-platform**: Provides execution scripts for Linux/macOS (`lumen.sh`) and Windows (`lumen.bat`)
+- **User Interface**: 
+  - Intuitive Graphical User Interface (GUI) for easy file selection and conversion.
+  - Displays conversion progress and logs with levels: `[INFO]`, `[SUCCESS]`, `[ERROR]`.
+- **Cross-platform**: Desktop application available for Linux, macOS, and Windows.
 
-## Installation
+## Requisitos
 
-1. **Prerequisites**: Python 3.10+ must be installed and available in your PATH.
+- Python 3.10+
+- `pip`
+- Para build: dependencias de `requirements-build.txt`
+- Para release no GitHub: `gh` autenticado
+- Para build Windows no Linux: `wine`
 
-2. **Clone or download** this repository to your local machine.
-
-3. **Install dependencies**:
-   ```bash
-   # Create and activate virtual environment (recommended)
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   
-   # Install dependencies
-   pip install -r requirements.txt
-   ```
-   
-   Alternatively, the provided execution scripts (`lumen.sh` or `lumen.bat`) will automatically create and use a virtual environment if one doesn't exist, or use an existing one.
-
-## Usage
-
-### Via Execution Scripts (Recommended)
-
-**Linux/macOS**:
-```bash
-./lumen.sh /path/to/input.zip
-```
-
-**Windows**:
-```cmd
-lumen.bat C:\path\to\input.zip
-```
-
-### Direct Python Execution
+## Setup
 
 ```bash
-python3 lumen.py /path/to/input.zip
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### Example
+No Windows:
+
+```bat
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Rodando a aplicacao
+
+### Interface grafica
+
+Depois de ativar o ambiente virtual:
 
 ```bash
-# Convert images in sample_images.zip
-./lumen.sh sample_images.zip
+python app_launcher.py
 ```
 
-After execution, you will find the converted PNG images in the `lumen_output/` directory, preserving the original directory structure.
+ou:
+
+```bash
+python -m app.gui
+```
+
+Fluxo basico:
+
+1. Selecione um arquivo `.zip` com arquivos `.tif` ou `.tiff`
+2. Escolha a pasta de saida
+3. Clique em `Converter`
+4. Ao final, use o botao `Abrir pasta de saida`
+
+### CLI
+
+Se quiser executar sem interface:
+
+```bash
+python lumen.py caminho/para/imagens.zip
+```
+
+O resultado sera salvo por padrao em `lumen_output/`.
+
+## Testes
+
+Para rodar os testes unitarios:
+
+```bash
+python -m unittest tests/test_lumen.py
+```
+
+## Build Linux
+
+Instale as dependencias de build:
+
+```bash
+pip install -r requirements-build.txt
+```
+
+### Build one-dir
+
+```bash
+python build.py
+```
+
+Saida esperada:
+
+- `dist/LumenConverter/`
+
+### Build one-file
+
+```bash
+python release_build.py
+```
+
+Saida esperada:
+
+- `dist/LumenConverter-Linux-x64`
+
+Observacao:
+
+- Depois de alterar codigo da GUI, voce precisa rebuildar o executavel para testar o comportamento no binario empacotado.
+
+## Build Windows no proprio Windows
+
+Se voce estiver no Windows, o fluxo de release ja tenta gerar o instalador automaticamente via Inno Setup.
+
+Pre-requisitos:
+
+- Python com dependencias de `requirements.txt` e `requirements-build.txt`
+- `ISCC` do Inno Setup no `PATH`
+- `gh` autenticado
+- repositorio git com remoto `origin` via SSH
+
+Gerando apenas o executavel:
+
+```bat
+python release_build.py
+```
+
+Gerando release completa:
+
+```bash
+./make_release.sh v1.0.0
+```
+
+Esse fluxo:
+
+1. Gera `dist/LumenConverter-Windows-x64.exe`
+2. Executa `ISCC installer_windows.iss` no Windows
+3. Procura automaticamente o instalador em `dist_installer/LumenConverter-Setup-Windows-x64.exe`
+4. Publica os assets via `gh release`
+
+## Windows Build from Linux with Wine
+
+`PyInstaller` does not generate Windows binaries from a native Linux Python runtime. To produce `LumenConverter-Windows-x64.exe` on Linux, this repository now includes a Wine-based build flow that runs a real Windows Python inside an isolated Wine prefix.
+
+### Prerequisites
+
+- `wine`, `wineboot`, and `winepath` installed on Linux
+- The Windows Python installer available at `python-3.10.0-amd64.exe` in the repository root
+- Optional: Inno Setup 6 installed inside the same Wine prefix if you also want a `Setup` executable
+
+### Build command
+
+```bash
+./build_windows_wine.sh
+```
+
+The script will:
+
+1. Create an isolated Wine prefix at `.wine-lumen/`
+2. Install Windows Python at `C:\python310`
+3. Install `requirements.txt` and `requirements-build.txt`
+4. Run `release_build.py` using the Windows Python interpreter
+5. Try to compile `installer_windows.iss` if `ISCC.exe` is available in Wine
+
+### Outputs
+
+- Portable executable: `dist/LumenConverter-Windows-x64.exe`
+- Installer, when Inno Setup is installed: `dist_installer/LumenConverter-Setup-Windows-x64.exe`
+
+### Notes
+
+- This flow avoids relying on your global `~/.wine`, which is a common source of broken `pip` and `PyInstaller` installations.
+- If you keep the Python installer in another location, run with `PYTHON_INSTALLER=/path/to/python-3.10.0-amd64.exe ./build_windows_wine.sh`
+- If Inno Setup is installed in another path inside Wine, run with `INNO_COMPILER_WINDOWS='C:\path\to\ISCC.exe' ./build_windows_wine.sh`
+
+## Release
+
+Para publicar uma release com assets:
+
+```bash
+./make_release.sh v1.0.0
+```
+
+O script chama `release_build.py`, tenta gerar instalador Windows quando estiver rodando no Windows, normaliza nomes de assets e publica via GitHub CLI.
 
 ## Output
 
@@ -100,10 +225,11 @@ The tool provides clear console output with the following log levels:
    - Handles corrupted images gracefully by logging errors and continuing with other files.
    - Reports summary of successful and failed conversions.
 
-## Dependencies
+## Dependencias
 
-- **Pillow**: Python Imaging Library (Fork) for image processing.
-  - Specified in `requirements.txt` as `Pillow>=9.0.0`
+- **Pillow** para processamento de imagem
+- **PySide6** para a interface grafica
+- **PyInstaller** para empacotamento
 
 ## Contributing
 
