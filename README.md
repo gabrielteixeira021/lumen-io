@@ -1,6 +1,6 @@
-# Lumen CLI Tool
+# Lumen Desktop Application
 
-A robust, production-ready CLI tool that converts TIFF images (including 8-bit and 16-bit) into lossless PNG format while preserving pixel integrity for downstream AI classification tasks.
+A robust, production-ready desktop application with a Graphical User Interface (GUI) that converts TIFF images (including 8-bit and 16-bit) into lossless PNG format while preserving pixel integrity for downstream AI classification tasks.
 
 ## Features
 
@@ -12,10 +12,10 @@ A robust, production-ready CLI tool that converts TIFF images (including 8-bit a
   - Detects bit depth (8-bit or 16-bit) and preserves it in PNG output
   - Uses Pillow (PIL) with correct mode handling for lossless conversion
   - Preserves essential metadata when possible
-- **CLI UX**: 
-  - Clear logs with levels: `[INFO]`, `[SUCCESS]`, `[ERROR]`
-  - Accepts input file as CLI argument
-- **Cross-platform**: Provides execution scripts for Linux/macOS (`lumen.sh`) and Windows (`lumen.bat`)
+- **User Interface**: 
+  - Intuitive Graphical User Interface (GUI) for easy file selection and conversion.
+  - Displays conversion progress and logs with levels: `[INFO]`, `[SUCCESS]`, `[ERROR]`.
+- **Cross-platform**: Desktop application available for Linux, macOS, and Windows.
 
 ## Installation
 
@@ -33,36 +33,40 @@ A robust, production-ready CLI tool that converts TIFF images (including 8-bit a
    pip install -r requirements.txt
    ```
    
-   Alternatively, the provided execution scripts (`lumen.sh` or `lumen.bat`) will automatically create and use a virtual environment if one doesn't exist, or use an existing one.
+   Alternativamente, os scripts de execução fornecidos (`lumen.sh` ou `lumen.bat`) estão configurados para iniciar a aplicação GUI, criando e usando automaticamente um ambiente virtual, se um não existir, ou usando um existente.
 
 ## Usage
 
+To launch the Lumen Desktop Application:
+
 ### Via Execution Scripts (Recommended)
+
+Simply run the appropriate script for your operating system from the project's root directory:
 
 **Linux/macOS**:
 ```bash
-./lumen.sh /path/to/input.zip
+./lumen.sh
 ```
 
 **Windows**:
 ```cmd
-lumen.bat C:\path\to\input.zip
+lumen.bat
 ```
+
+These scripts will handle the virtual environment activation and launch the application.
 
 ### Direct Python Execution
 
-```bash
-python3 lumen.py /path/to/input.zip
-```
-
-### Example
+If you prefer to launch it directly using Python (after installing dependencies in your virtual environment):
 
 ```bash
-# Convert images in sample_images.zip
-./lumen.sh sample_images.zip
+source .venv/bin/activate
+python -m app.gui
 ```
 
-After execution, you will find the converted PNG images in the `lumen_output/` directory, preserving the original directory structure.
+Once the application is open, you can use its interface to select your input `.zip` file and start the conversion.
+
+After conversion, you will find the converted PNG images in the `lumen_output/` directory, preserving the original directory structure.
 
 ## Output
 
